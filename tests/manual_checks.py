@@ -1,7 +1,20 @@
-from src.common.schemas import PersonalInformation
+from src.common.schemas import EducationEntry
 
-p = PersonalInformation(full_name="Karan Lakhani", email="karan@example.com")
-print(p)
-
-p2 = PersonalInformation(full_name="Karan", email="not-a-real-email")
-print(p2)
+edu = EducationEntry(
+    institution="Christ University",
+    degree="Bachelor of Science in Data Science",
+    start_date="Aug 2022",
+    end_date="Jun 2025",
+    is_present=False,
+    coursework=[
+        "Python Programming",
+        "Exploratory Data Analysis",
+        "Data Visualization",
+        "Database Management Systems (SQL and NoSQL)",
+        "Machine Learning",
+        "Deep Learning",
+        "Image Processing",
+        "Artificial Intelligence",
+    ],
+)
+print(edu)
