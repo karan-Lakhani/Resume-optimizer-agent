@@ -81,3 +81,27 @@ class ResumeProfile(BaseModel):
     projects: list[ProjectEntry] = []
     additional_sections: list[MiscEntry] = []
     links: list[Link] = []
+
+class RemotePreference(str, Enum):
+    REMOTE = "remote"
+    HYBRID = "hybrid"
+    ONSITE = "onsite"
+
+
+class EmploymentType(str, Enum):
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+    INTERNSHIP = "internship"
+    CONTRACT = "contract"
+    TEMPORARY = "temporary"
+
+class UserPreferences(BaseModel):
+    target_roles: list[str] = []
+    target_industries: list[str] = []
+    preferred_locations: list[str] = []
+    remote_preference: Optional[RemotePreference] = None
+    min_salary: Optional[float] = None
+    employment_type: Optional[EmploymentType] = None
+    experience_level: Optional[str] = None
+    preferred_companies: list[str] = []
+    excluded_companies: list[str] = []
