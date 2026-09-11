@@ -63,3 +63,21 @@ class ProjectEntry(BaseModel):
     description: list[str] = None
     technologies: list[str] = []
     link: Optional[str] = None
+
+class MiscEntry(BaseModel):
+    section_title: str   # whatever the original resume called it, e.g. "Leadership"
+    title: Optional[str] = None
+    organization: Optional[str] = None
+    dates: Optional[str] = None
+    bullets: list[str] = []
+
+class ResumeProfile(BaseModel):
+    personal_information: PersonalInformation
+    summary: Optional[str] = None
+    skills: list[SkillEntry] = []
+    experience: list[ExperienceEntry] = []
+    education: list[EducationEntry] = []
+    certifications: list[CertificationEntry] = []
+    projects: list[ProjectEntry] = []
+    additional_sections: list[MiscEntry] = []
+    links: list[Link] = []
