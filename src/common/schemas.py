@@ -51,9 +51,15 @@ class EducationEntry(BaseModel):
     end_date: Optional[str] = None
     is_present: bool = False
     coursework: list[str] = []
-    
+
 class CertificationEntry(BaseModel):
     name: str
     issuer: Optional[str] = None
     date_earned: Optional[str] = None
     credential_id: Optional[str] = None
+
+class ProjectEntry(BaseModel):
+    name: str
+    description: list[str] = None
+    technologies: list[str] = []
+    link: Optional[str] = None
