@@ -86,6 +86,7 @@ class RemotePreference(str, Enum):
     REMOTE = "remote"
     HYBRID = "hybrid"
     ONSITE = "onsite"
+    ANY = "any"
 
 
 class EmploymentType(str, Enum):
@@ -94,6 +95,7 @@ class EmploymentType(str, Enum):
     INTERNSHIP = "internship"
     CONTRACT = "contract"
     TEMPORARY = "temporary"
+    ANY = "any"
 
 class UserPreferences(BaseModel):
     target_roles: list[str] = []
