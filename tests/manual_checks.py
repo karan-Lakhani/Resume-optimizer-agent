@@ -1,12 +1,36 @@
-from src.common.schemas import UserPreferences, RemotePreference, EmploymentType
+from src.tracker.db import init_db, SessionLocal
+from src.tracker.models import User, Profile
+from src.common.schemas import ResumeProfile, PersonalInformation
 
-prefs = UserPreferences(
-    target_roles=["Data Analyst", "Data Scientist"],
-    preferred_locations=["Bangalore", "Remote"],
-    remote_preference=RemotePreference.REMOTE,
-    employment_type=EmploymentType.FULL_TIME,
-    min_salary=600000,
+init_db()
+
+session = SessionLocal()
+
+# create a user
+user = User(name="Karan Lakhani", email="karanlakhani2712@gmail.com")
+session.add(user)
+session.commit()
+
+# create a minimal resume profile
+resume = ResumeProfile(
+    personal_information=PersonalInformation(
+        full_name="Karan Lakhani",
+        email="karanlakhani2712@gmail.com",
+    )
 )
-print(prefs)
 
-bad_prefs = UserPreferences(remote_preference="flexible")  # should fail — not a valid option
+# save it as a profile row
+profile = Profile(
+    user_id=user.id,
+    raw_resume_path="data/karan_lakhani.pdf",
+    parsed_json=resume.model_dump(),
+    summary="Aspiring data analyst with experience in Power BI and SQL.",
+)
+session.add(profile)
+session.commit()
+
+print(f"Profile saved with id: {profile.id}")
+print(f"Belongs to user: {profile.user.name}")
+print(f"User's profiles count: {len(user.profiles)}")
+
+session.close()
