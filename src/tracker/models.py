@@ -64,3 +64,49 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     source: Mapped["JobSource"] = relationship(back_populates="jobs")
+
+class ResumeVersion(Base):
+    __tablename__ = "resume_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), nullable=False)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(1024))
+    profile_match_score: Mapped[float] = mapped_column(Float)
+    ats_score: Mapped[float] = mapped_column(Float)
+    changes_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    keywords_targeted_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    validation_status: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    applications: Mapped[list["Application"]] = relationship(back_populates="resume_version")
+
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), nullable=False)
+    resume_version_id: Mapped[int | None] = mapped_column(ForeignKey("resume_versions.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="saved")
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    job: Mapped["Job"] = relationship()
+    resume_version: Mapped["ResumeVersion"] = relationship(back_populates="applications")
+    materials: Mapped[list["ApplicationMaterial"]] = relationship(back_populates="application")
+
+class ApplicationMaterial(Base):
+    __tablename__ = "application_materials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String(50))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    application: Mapped["Application"] = relationship(back_populates="materials")
