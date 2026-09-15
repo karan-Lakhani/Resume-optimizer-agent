@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String, DateTime, JSON, Text, ForeignKey
+from sqlalchemy import Integer, String, DateTime, JSON, Text, ForeignKey, Float
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
@@ -30,3 +30,37 @@ class Profile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship(back_populates="profiles")
+    
+
+class JobSource(Base):
+    __tablename__ = "job_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    type: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    jobs: Mapped[list["Job"]] = relationship(back_populates="source")
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("job_sources.id"), nullable=False)
+    source_job_id: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(255))
+    company: Mapped[str] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str] = mapped_column(Text)
+    skills_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    salary_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    salary_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    employment_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    experience_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    application_url: Mapped[str] = mapped_column(String(2048))
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    raw_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    source: Mapped["JobSource"] = relationship(back_populates="jobs")

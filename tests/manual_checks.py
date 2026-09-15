@@ -1,36 +1,28 @@
 from src.tracker.db import init_db, SessionLocal
-from src.tracker.models import User, Profile
-from src.common.schemas import ResumeProfile, PersonalInformation
+from src.tracker.models import JobSource, Job
 
 init_db()
-
 session = SessionLocal()
 
-# create a user
-user = User(name="Karan Lakhani", email="karanlakhani2712@gmail.com")
-session.add(user)
+source = JobSource(name="adzuna", type="api")
+session.add(source)
 session.commit()
 
-# create a minimal resume profile
-resume = ResumeProfile(
-    personal_information=PersonalInformation(
-        full_name="Karan Lakhani",
-        email="karanlakhani2712@gmail.com",
-    )
+job = Job(
+    source_id=source.id,
+    source_job_id="abc123",
+    title="Data Analyst",
+    company="Acme Corp",
+    location="Bangalore",
+    description="We are looking for a data analyst...",
+    application_url="https://example.com/job/abc123",
+    skills_json=["Python", "SQL", "Power BI"],
 )
-
-# save it as a profile row
-profile = Profile(
-    user_id=user.id,
-    raw_resume_path="data/karan_lakhani.pdf",
-    parsed_json=resume.model_dump(),
-    summary="Aspiring data analyst with experience in Power BI and SQL.",
-)
-session.add(profile)
+session.add(job)
 session.commit()
 
-print(f"Profile saved with id: {profile.id}")
-print(f"Belongs to user: {profile.user.name}")
-print(f"User's profiles count: {len(user.profiles)}")
+print(f"Job saved with id: {job.id}")
+print(f"Job source: {job.source.name}")
+print(f"Source has {len(source.jobs)} job(s)")
 
 session.close()
