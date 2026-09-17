@@ -60,7 +60,7 @@ class CertificationEntry(BaseModel):
 
 class ProjectEntry(BaseModel):
     name: str
-    description: list[str] = None
+    description: list[str] = []
     technologies: list[str] = []
     link: Optional[str] = None
 
