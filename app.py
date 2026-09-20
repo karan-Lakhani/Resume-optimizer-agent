@@ -3,7 +3,10 @@ from pathlib import Path
 import streamlit as st
 
 from src.job_application.profile_service import get_current_profile, save_parsed_profile
-from src.tracker.db import init_db
+from src.job_search.search_service import generate_search_params, run_search, save_job
+from src.common.schemas import ResumeProfile
+from src.tracker.db import SessionLocal, init_db
+from config.settings import get_settings
 
 UPLOADS_DIR = Path("data/uploads")
 
@@ -144,7 +147,146 @@ elif choice == "👤 My Profile":
 
 elif choice == "🔎 Job Search":
     st.title("🔎 Job Search")
-    st.warning("Coming in Milestone 3 — Job Discovery.")
+
+    settings = get_settings()
+    if not settings.jsearch_api_key:
+        st.error("No `JSEARCH_API_KEY` found in `.env`. Add your OpenWebNinja API key and restart the app.")
+    else:
+        # --- Auto-fill search params from profile ---
+        profile_data = get_current_profile()
+        default_params = {"query": "", "location": "", "remote_only": False, "date_posted": "month"}
+
+        if profile_data:
+            try:
+                profile_obj = ResumeProfile.model_validate(profile_data.parsed_json)
+                default_params = generate_search_params(profile_obj)
+            except Exception:
+                pass  # no profile yet or malformed — fall through to empty defaults
+
+        # Persist search params in session state so the form is sticky.
+        # Only initialise once — user's edits are preserved across reruns.
+        # "Refresh from profile" button below resets them to current profile.
+        if "job_search_query" not in st.session_state:
+            st.session_state.job_search_query = default_params["query"]
+        if "job_search_location" not in st.session_state:
+            st.session_state.job_search_location = default_params["location"]
+        if "job_search_remote" not in st.session_state:
+            st.session_state.job_search_remote = default_params["remote_only"]
+        if "job_search_date" not in st.session_state:
+            st.session_state.job_search_date = default_params["date_posted"]
+
+        if profile_data and st.button("↻ Refresh suggestions from profile", type="secondary"):
+            st.session_state.job_search_query = default_params["query"]
+            st.session_state.job_search_location = default_params["location"]
+            st.session_state.job_search_remote = default_params["remote_only"]
+            st.session_state.job_search_date = default_params["date_posted"]
+            st.rerun()
+
+        # --- Search form ---
+        with st.form("job_search_form"):
+            col1, col2 = st.columns([3, 2])
+            with col1:
+                query = st.text_input(
+                    "Keywords / Job Title",
+                    value=st.session_state.job_search_query,
+                    placeholder="e.g. Python Developer, Machine Learning",
+                )
+            with col2:
+                location = st.text_input(
+                    "Location",
+                    value=st.session_state.job_search_location,
+                    placeholder="e.g. New York, Remote",
+                )
+
+            col3, col4 = st.columns([1, 2])
+            with col3:
+                remote_only = st.checkbox("Remote only", value=st.session_state.job_search_remote)
+            with col4:
+                date_posted = st.selectbox(
+                    "Posted within",
+                    options=["month", "week", "3days", "today", "all"],
+                    index=["month", "week", "3days", "today", "all"].index(
+                        st.session_state.job_search_date
+                    ),
+                )
+
+            submitted = st.form_submit_button("🔍 Search", use_container_width=True)
+
+        if submitted:
+            st.session_state.job_search_query = query
+            st.session_state.job_search_location = location
+            st.session_state.job_search_remote = remote_only
+            st.session_state.job_search_date = date_posted
+
+            if not query.strip():
+                st.warning("Enter at least a keyword or job title to search.")
+            else:
+                with st.spinner("Searching jobs…"):
+                    try:
+                        session = SessionLocal()
+                        try:
+                            results = run_search(
+                                api_key=settings.jsearch_api_key,
+                                query=query,
+                                location=location,
+                                remote_only=remote_only,
+                                date_posted=date_posted,
+                                session=session,
+                            )
+                        finally:
+                            session.close()
+                        st.session_state.job_results = results
+                    except Exception as e:
+                        st.error(f"Search failed: {e}")
+                        st.session_state.job_results = []
+
+        # --- Results ---
+        results = st.session_state.get("job_results")
+        if results is not None:
+            if not results:
+                st.info("No jobs found — try broader keywords or a different location.")
+            else:
+                st.markdown(f"**{len(results)} jobs found**")
+                for job in results:
+                    with st.container(border=True):
+                        c1, c2 = st.columns([4, 1])
+                        with c1:
+                            st.markdown(f"### {job['title']}")
+                            st.markdown(
+                                f"**{job['company']}** &nbsp;·&nbsp; {job['location'] or 'Location not specified'}"
+                            )
+
+                            badges = []
+                            if job.get("employment_type"):
+                                badges.append(job["employment_type"].replace("_", " ").title())
+                            if job.get("is_remote"):
+                                badges.append("Remote")
+                            if job.get("salary_min") or job.get("salary_max"):
+                                lo = f"${job['salary_min']:,.0f}" if job.get("salary_min") else ""
+                                hi = f"${job['salary_max']:,.0f}" if job.get("salary_max") else ""
+                                salary = " – ".join(filter(None, [lo, hi]))
+                                badges.append(salary)
+                            if badges:
+                                st.caption(" · ".join(badges))
+
+                        with c2:
+                            if job.get("application_url"):
+                                st.link_button("Apply ↗", job["application_url"], use_container_width=True)
+                            db_id = job.get("db_id")
+                            if db_id:
+                                saved_key = f"saved_{db_id}"
+                                if st.session_state.get(saved_key):
+                                    st.button("✓ Saved", key=f"save_{db_id}", disabled=True, use_container_width=True)
+                                else:
+                                    if st.button("Save", key=f"save_{db_id}", use_container_width=True):
+                                        session = SessionLocal()
+                                        try:
+                                            save_job(db_id, session)
+                                        finally:
+                                            session.close()
+                                        st.session_state[saved_key] = True
+                                        st.toast("Job saved!", icon="✅")
+                                        st.rerun()
 
 elif choice == "🎯 Recommended Jobs":
     st.title("🎯 Recommended Jobs")
