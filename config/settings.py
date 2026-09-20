@@ -15,6 +15,8 @@ class Settings:
     llm_model: str = os.getenv("LLM_MODEL")
     llm_api_key: str | None = os.getenv("LLM_API_KEY")
 
+    jsearch_api_key: str | None = os.getenv("JSEARCH_API_KEY")
+
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./data/career_agent.db")
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 

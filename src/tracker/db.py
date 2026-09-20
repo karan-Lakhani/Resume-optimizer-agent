@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from config.settings import get_settings
 from src.tracker.models import Base
 
-engine = create_engine("sqlite:///./data/career_agent.db")
+engine = create_engine(get_settings().database_url)
 
 SessionLocal = sessionmaker(bind=engine)
 

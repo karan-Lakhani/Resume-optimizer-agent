@@ -9,3 +9,5 @@ outputs/tailored_resumes/*
 outputs/cover_letters/*
 outputs/linkedin_suggestions/*
 .DS_Store
+data/*.pdf
+data/uploads/*

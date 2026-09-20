@@ -3,6 +3,7 @@ from src.common.schemas import (
     SkillEntry,
     EvidenceLevel,
     ExperienceEntry,
+    ProjectEntry,
     ResumeProfile,
     UserPreferences,
     RemotePreference,
@@ -70,3 +71,11 @@ def test_user_preferences_enums():
 def test_user_preferences_invalid_enum():
     with pytest.raises(ValidationError):
         UserPreferences(remote_preference="flexible")
+
+
+def test_project_entry_description_defaults_to_empty_list():
+    # Regression test: description used to default to None (type/default
+    # mismatch), which crashed app.py's `for line in proj["description"]`
+    # whenever the LLM omitted a project's description.
+    project = ProjectEntry(name="Side Project")
+    assert project.description == []
