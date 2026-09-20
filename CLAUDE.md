@@ -72,7 +72,14 @@ Commits are tagged sequentially by milestone/feature step (`v0: project skeleton
 - 10 automated tests (schemas + regression test for ProjectEntry.description)
 - No blocking bugs; token efficiency tuned (reasoning_effort, thinking block control)
 
-**Milestone 3 onwards** — Not started. Job search, recommendation engine, application tracker, etc. are placeholder pages.
+**Milestone 3 (Job Search)** — ✅ Done (committed as v17, branch `feature/job-search`). Discovers jobs via OpenWebNinja JSearch API. Includes:
+- JSearch API client (`src/job_search/sources/jsearch.py`) — calls endpoint, normalises response to `Job` model shape
+- Search service (`src/job_search/search_service.py`) — auto-generates search params from parsed profile, upserts results to DB, saves jobs as `Application` rows
+- Job Search page: auto-filled editable form (keywords, location, remote toggle, date filter), results as cards with Apply + Save buttons
+- `remote_only` filtered client-side (API ignores the param); `date_posted` and `num_pages` sent correctly
+- Save button persists state in session (`st.toast` + disabled "✓ Saved" button)
+
+**Milestone 4 onwards** — Not started. Job matching/recommendations, application tracker, resume versions, etc. are placeholder pages.
 
 ## Known Limitations & Notes
 
