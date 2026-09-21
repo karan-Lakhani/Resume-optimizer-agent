@@ -107,3 +107,10 @@ class UserPreferences(BaseModel):
     experience_level: Optional[str] = None
     preferred_companies: list[str] = []
     excluded_companies: list[str] = []
+
+
+class JobMatchResult(BaseModel):
+    match_score: int          # 0–100
+    matched_skills: list[str]
+    missing_skills: list[str]
+    summary: str

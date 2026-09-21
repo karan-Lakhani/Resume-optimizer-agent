@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String, DateTime, JSON, Text, ForeignKey, Float
+from sqlalchemy import Integer, String, DateTime, JSON, Text, ForeignKey, Float, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
@@ -110,3 +110,19 @@ class ApplicationMaterial(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     application: Mapped["Application"] = relationship(back_populates="materials")
+
+
+class JobMatch(Base):
+    __tablename__ = "job_matches"
+    __table_args__ = (UniqueConstraint("profile_id", "job_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), nullable=False)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), nullable=False)
+    match_score: Mapped[float] = mapped_column(Float, nullable=False)
+    matched_skills_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    missing_skills_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    job: Mapped["Job"] = relationship()
