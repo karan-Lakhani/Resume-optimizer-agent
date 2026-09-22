@@ -8,7 +8,7 @@ from src.job_matching.matcher import get_or_compute_match
 from src.common.schemas import ResumeProfile
 from src.common.logging import get_logger
 from src.tracker.db import SessionLocal, init_db
-from src.tracker.models import Job, JobMatch
+from src.tracker.models import Application, Job, JobMatch
 from config.settings import get_settings
 
 logger = get_logger(__name__)
@@ -47,11 +47,20 @@ if choice == "🏠 Dashboard":
     st.title("🏠 Dashboard")
     st.info("Welcome to your AI Career Agent. Use the sidebar to navigate.")
 
+    _db = SessionLocal()
+    try:
+        _jobs_count = _db.query(Job).count()
+        _apps_count = _db.query(Application).count()
+        _interviews_count = _db.query(Application).filter(Application.status == "interviewing").count()
+        _offers_count = _db.query(Application).filter(Application.status == "offer").count()
+    finally:
+        _db.close()
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Jobs Found", 0)
-    col2.metric("Applications", 0)
-    col3.metric("Interviews", 0)
-    col4.metric("Offers", 0)
+    col1.metric("Jobs Found", _jobs_count)
+    col2.metric("Applications", _apps_count)
+    col3.metric("Interviews", _interviews_count)
+    col4.metric("Offers", _offers_count)
 
 elif choice == "👤 My Profile":
     st.title("👤 My Profile")
