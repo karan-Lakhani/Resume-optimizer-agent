@@ -4,9 +4,14 @@ import streamlit as st
 
 from src.job_application.profile_service import get_current_profile, save_parsed_profile
 from src.job_search.search_service import generate_search_params, run_search, save_job
+from src.job_matching.matcher import get_or_compute_match
 from src.common.schemas import ResumeProfile
+from src.common.logging import get_logger
 from src.tracker.db import SessionLocal, init_db
+from src.tracker.models import Application, Job, JobMatch
 from config.settings import get_settings
+
+logger = get_logger(__name__)
 
 UPLOADS_DIR = Path("data/uploads")
 
@@ -42,11 +47,20 @@ if choice == "🏠 Dashboard":
     st.title("🏠 Dashboard")
     st.info("Welcome to your AI Career Agent. Use the sidebar to navigate.")
 
+    _db = SessionLocal()
+    try:
+        _jobs_count = _db.query(Job).count()
+        _apps_count = _db.query(Application).count()
+        _interviews_count = _db.query(Application).filter(Application.status == "interviewing").count()
+        _offers_count = _db.query(Application).filter(Application.status == "offer").count()
+    finally:
+        _db.close()
+
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Jobs Found", 0)
-    col2.metric("Applications", 0)
-    col3.metric("Interviews", 0)
-    col4.metric("Offers", 0)
+    col1.metric("Jobs Found", _jobs_count)
+    col2.metric("Applications", _apps_count)
+    col3.metric("Interviews", _interviews_count)
+    col4.metric("Offers", _offers_count)
 
 elif choice == "👤 My Profile":
     st.title("👤 My Profile")
@@ -290,7 +304,104 @@ elif choice == "🔎 Job Search":
 
 elif choice == "🎯 Recommended Jobs":
     st.title("🎯 Recommended Jobs")
-    st.warning("Coming in Milestone 4 — Matching.")
+
+    session = SessionLocal()
+    try:
+        profile_row = get_current_profile(session)
+        if not profile_row or not profile_row.parsed_json:
+            st.info("Upload your resume on the **My Profile** page first.")
+        else:
+            try:
+                profile = ResumeProfile.model_validate(profile_row.parsed_json)
+            except Exception as e:
+                st.error(f"Could not load your profile — try re-uploading your resume. ({e})")
+                profile = None
+
+            if profile is not None:
+                jobs = session.query(Job).all()
+                if not jobs:
+                    st.info("No jobs found yet — run a search on the **Job Search** page first.")
+                else:
+                    cached_job_ids = {
+                        m.job_id
+                        for m in session.query(JobMatch.job_id).filter_by(profile_id=profile_row.id)
+                    }
+                    unmatched = [j for j in jobs if j.id not in cached_job_ids]
+
+                    if unmatched:
+                        with st.spinner(f"Analysing {len(unmatched)} job(s)…"):
+                            for job in unmatched:
+                                try:
+                                    get_or_compute_match(profile_row.id, profile, job, session)
+                                except Exception as e:
+                                    logger.warning("Failed to match job %d: %s", job.id, e)
+
+                    matches = (
+                        session.query(JobMatch, Job)
+                        .join(Job, JobMatch.job_id == Job.id)
+                        .filter(JobMatch.profile_id == profile_row.id)
+                        .order_by(JobMatch.match_score.desc())
+                        .all()
+                    )
+
+                    st.markdown(f"**{len(matches)} jobs ranked by fit**")
+                    for match, job in matches:
+                        score = int(match.match_score)
+                        if score >= 80:
+                            score_color, fit_label = "#2ecc71", "Strong fit"
+                        elif score >= 60:
+                            score_color, fit_label = "#3498db", "Good fit"
+                        elif score >= 40:
+                            score_color, fit_label = "#f39c12", "Partial fit"
+                        else:
+                            score_color, fit_label = "#e74c3c", "Weak fit"
+
+                        with st.container(border=True):
+                            c1, c2 = st.columns([4, 1])
+                            with c1:
+                                st.markdown(f"### {job.title}")
+                                st.markdown(
+                                    f"**{job.company}** &nbsp;·&nbsp; {job.location or 'Location not specified'}"
+                                )
+                                badges = []
+                                if job.employment_type:
+                                    badges.append(job.employment_type.replace("_", " ").title())
+                                if job.salary_min or job.salary_max:
+                                    lo = f"${job.salary_min:,.0f}" if job.salary_min else ""
+                                    hi = f"${job.salary_max:,.0f}" if job.salary_max else ""
+                                    badges.append(" – ".join(filter(None, [lo, hi])))
+                                if badges:
+                                    st.caption(" · ".join(badges))
+
+                            with c2:
+                                st.markdown(
+                                    f"<div style='text-align:center; font-size:2.2rem; font-weight:bold;"
+                                    f" color:{score_color}'>{score}</div>"
+                                    f"<div style='text-align:center; font-size:0.8rem;"
+                                    f" color:{score_color}'>{fit_label}</div>",
+                                    unsafe_allow_html=True,
+                                )
+                                if job.application_url:
+                                    st.link_button("Apply ↗", job.application_url, use_container_width=True)
+
+                            with st.expander("📋 Details"):
+                                if match.summary:
+                                    st.write(match.summary)
+                                col_a, col_b = st.columns(2)
+                                with col_a:
+                                    st.markdown("**Matched skills**")
+                                    for skill in (match.matched_skills_json or []):
+                                        st.markdown(f"- ✅ {skill}")
+                                    if not match.matched_skills_json:
+                                        st.caption("None identified")
+                                with col_b:
+                                    st.markdown("**Missing skills**")
+                                    for skill in (match.missing_skills_json or []):
+                                        st.markdown(f"- ❌ {skill}")
+                                    if not match.missing_skills_json:
+                                        st.caption("None identified")
+    finally:
+        session.close()
 
 elif choice == "📄 Resume Versions":
     st.title("📄 Resume Versions")
