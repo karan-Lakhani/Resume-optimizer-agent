@@ -114,3 +114,17 @@ class JobMatchResult(BaseModel):
     matched_skills: list[str]
     missing_skills: list[str]
     summary: str
+
+
+class TailoredSection(BaseModel):
+    section: str              # "summary" | "skills" | "experience"
+    original: str             # original text from the resume
+    rewrite: str              # primary LLM rewrite
+    alternatives: list[str] = []  # 2 alternative rewrites
+
+
+class TailoringResult(BaseModel):
+    job_title: str
+    company: str
+    sections: list[TailoredSection]
+    keywords_targeted: list[str] = []
